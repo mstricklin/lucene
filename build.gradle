@@ -1,0 +1,40 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+
+description = 'scratch'
+
+
+repositories {
+    mavenLocal()
+    maven { url "http://mirror/maven2" }
+    maven { url "http://nexus.arlut.utexas.edu:8081/nexus/content/groups/public" }
+    maven { url "http://ciads-nexus:8081/nexus/content/groups/public" }
+}
+
+dependencies {
+    compile 'org.slf4j:slf4j-api:1.7.21'
+    compile 'org.slf4j:slf4j-log4j12:1.7.21'
+    compileOnly 'org.projectlombok:lombok:1.16.18'
+    compile 'org.apache.lucene:lucene-core:5.5.3'
+    compile 'org.apache.lucene:lucene-analyzers-common:5.5.3'
+    compile 'org.apache.commons:commons-lang3:3.6'
+    compile 'com.google.guava:guava:20.0'
+
+    testCompile 'junit:junit:4.12'
+}
+
+
+task fatJar(type: Jar) {
+    manifest { attributes(
+	    'Implementation-Title': 'Runnable App',
+	    'Main-Class': 'edu.utexas.arlut.ciads.App'
+	    )
+    }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+        with jar
+}
+
+jar.enabled = false
+assemble.dependsOn fatJar
+
