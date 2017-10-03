@@ -27,30 +27,46 @@ public class App {
 
 //        TrackingIndexWriter trackingIndexWriter = new TrackingIndexWriter(writer);
         final ReferenceManager<IndexSearcher> sm = new SearcherManager(writer, true, null);
+        log.info("ReferenceManager<IndexSearcher> {}", sm);
         writer.commit();
-        addDoc(writer, sm, ImmutableMap.of("title", "A", "john", "193398817"));
-        writer.commit();
+        addDoc(writer, sm, ImmutableMap.of("id", Integer.valueOf(1), "title", "A", "john", "193398817"));
+//        writer.commit();
         addDoc(writer, sm, ImmutableMap.of("title", "B", "paul", "55320055Z"));
-        addDoc(writer, sm, ImmutableMap.of("title", "C", "ringo", "55063554A"));
-        addDoc(writer, sm, ImmutableMap.of("title", "D", "george", "9900333X"));
+
+
+        dumpDynamic(sm);
+//        writer.rollback();
+//
+//
+//        writer = new IndexWriter(index, new IndexWriterConfig(kwa));
+////        final ReferenceManager<IndexSearcher> sm0 = new SearcherManager(writer, true, null);
+//        dumpDynamic(sm);
+
+//        IndexReader reader = DirectoryReader.open(index);
+//        IndexSearcher s0 = new IndexSearcher(reader);
+//        dumpStatic(s0); // static
+
+
+//        addDoc(writer, sm, ImmutableMap.of("title", "C", "ringo", "55063554A"));
+//        addDoc(writer, sm, ImmutableMap.of("title", "D", "george", "9900333X"));
 //        writer.close();
 
 
-        Query q = new MatchAllDocsQuery();
-        IndexReader reader = DirectoryReader.open(index);
-        IndexSearcher s0 = new IndexSearcher(reader);
-        dump(s0); // static
-        log.info("=====");
-        dump(sm); // dynamic
-
-        log.info("");
-
-        writer.commit();
-        dump(new IndexSearcher(DirectoryReader.open(index))); // static
-        log.info("=====");
-        dump(sm); // dynamic
+//        IndexReader reader = DirectoryReader.open(index);
+//        IndexSearcher s0 = new IndexSearcher(reader);
+//        dumpStatic(s0); // static
+//        log.info("=====");
+//        dumpDynamic(sm); // dynamic
+//
+//        log.info("");
+//
+//        writer.commit();
+//        dumpStatic(new IndexSearcher(DirectoryReader.open(index))); // static
+//        log.info("=====");
+//        dumpDynamic(sm); // dynamic
 
         writer.close();
+
 
     }
     // =================================
@@ -72,23 +88,24 @@ public class App {
         sm.maybeRefresh();
     }
     // =================================
-    static Query q = new MatchAllDocsQuery();
-    private static void dump(IndexSearcher s) throws IOException {
+    static Query allDocsQ = new MatchAllDocsQuery();
+    private static void dumpStatic(IndexSearcher s) throws IOException {
         log.info("Dump: {}", s);
-        TopDocs docs = s.search(q, 10);
+        TopDocs docs = s.search(allDocsQ, 10);
         for (ScoreDoc sd: docs.scoreDocs) {
             Document d = s.doc(sd.doc);
             log.info("ScoreDoc {}", d);
         }
     }
-    private static void dump(ReferenceManager<IndexSearcher> sm) throws IOException {
+    private static void dumpDynamic(ReferenceManager<IndexSearcher> sm) throws IOException {
+        log.info("ReferenceManager<IndexSearcher> {}", sm);
         try (CloseableIndexSearcher cis = CloseableIndexSearcher.acquire(sm)) {
             IndexSearcher s = cis.get();
             log.info("Dump: {}", s);
-            TopDocs docs = s.search(q, 10);
+            TopDocs docs = s.search(allDocsQ, 10);
             for (ScoreDoc sd : docs.scoreDocs) {
                 Document d = s.doc(sd.doc);
-                log.info("ScoreDoc {}", d);
+                log.info("\tScoreDoc {}", d);
             }
         }
     }
