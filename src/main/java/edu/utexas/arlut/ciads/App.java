@@ -1,16 +1,19 @@
 package edu.utexas.arlut.ciads;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.lucene.analysis.core.KeywordAnalyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.*;
 import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 
 @Slf4j
@@ -20,8 +23,10 @@ public class App {
         StandardAnalyzer analyzer = new StandardAnalyzer();
         KeywordAnalyzer kwa = new KeywordAnalyzer();
         Directory index = new RAMDirectory();
+//        Directory index = FSDirectory.open(Paths.get("d"));
 
         IndexWriterConfig config = new IndexWriterConfig(kwa);
+//        config.setCodec(new SimpleTextCodec());
         IndexWriter writer = new IndexWriter(index, config);
 
 
@@ -29,9 +34,9 @@ public class App {
         final ReferenceManager<IndexSearcher> sm = new SearcherManager(writer, true, null);
         log.info("ReferenceManager<IndexSearcher> {}", sm);
         writer.commit();
-        addDoc(writer, sm, ImmutableMap.of("id", Integer.valueOf(1), "title", "A", "john", "193398817"));
+        addDoc(writer, sm, ImmutableMap.of("id", "001","val", Integer.valueOf(72), "title", "A", "isbn", "193398817"));
 //        writer.commit();
-        addDoc(writer, sm, ImmutableMap.of("title", "B", "paul", "55320055Z"));
+        addDoc(writer, sm, ImmutableMap.of("id", "002","val", Integer.valueOf(93), "title", "B", "isbn", "55320055Z"));
 
 
         dumpDynamic(sm);
@@ -65,6 +70,19 @@ public class App {
 //        log.info("=====");
 //        dumpDynamic(sm); // dynamic
 
+        log.info("=====");
+        writer.commit();
+        Query q0 = new WildcardQuery(new Term("isbn", "55*"));
+        Query q1 = new TermQuery(new Term("title", "B"));
+        Query q2 = NumericRangeQuery.newIntRange("val", Integer.MAX_VALUE, 0, 2000, true, true);
+        log.info("Query '{}'", q2);
+
+        IndexSearcher s = sm.acquire();
+        TopDocs docs = s.search(q2, 10);
+        for (ScoreDoc sd : docs.scoreDocs) {
+            Document d = s.doc(sd.doc);
+            log.info("\tScoreDoc {}", d);
+        }
         writer.close();
 
 
@@ -74,16 +92,20 @@ public class App {
         Document doc = new Document();
         for (Map.Entry<String, Object> e: d.entrySet()) {
             Object val = e.getValue();
-            if (val instanceof String) {
+            if (e.getKey().toString().equalsIgnoreCase("id")) {
+                doc.add(new StringField("id", (String)e.getValue(), Field.Store.YES));
+            } else if (val instanceof String) {
                 doc.add(new StringField(e.getKey(), (String)e.getValue(), Field.Store.YES));
             } else if (val instanceof Float) {
-                doc.add(new FloatField(e.getKey(), (Float)e.getValue(), Field.Store.YES));
+                doc.add(new FloatField(e.getKey(), (Float)e.getValue(), Field.Store.NO));
+            } else if (val instanceof Integer) {
+                log.info("add integer {} {}", e.getKey(), e.getValue());
+                Integer i = (Integer)e.getValue();
+                IntField f = new IntField(e.getKey(), i, Field.Store.YES);
+                log.info("Field: {}", f);
+                doc.add(f);
             }
         }
-//        doc.add(new TextField("title", title, Field.Store.YES));
-//
-//        // use a string field for isbn because we don't want it tokenized
-//        doc.add(new StringField("isbn", isbn, Field.Store.YES));
         w.addDocument(doc);
         sm.maybeRefresh();
     }
@@ -106,6 +128,10 @@ public class App {
             for (ScoreDoc sd : docs.scoreDocs) {
                 Document d = s.doc(sd.doc);
                 log.info("\tScoreDoc {}", d);
+                for (IndexableField f: d) {
+                    log.info("\t\tfield: {}", f);
+                }
+
             }
         }
     }
